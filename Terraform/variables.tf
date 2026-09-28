@@ -54,3 +54,37 @@ variable "subscription_id" {
   description = "Azure Subscription ID"
   type        = string
 }
+
+
+#NSG_varibels
+variable "nsg_name" {
+  description = "Name of the Network Security Group"
+  type        = string
+  default     = "paperless-nsg"
+}
+
+variable "ssh_rule_name" {
+  description = "Name of the SSH security rule"
+  type        = string
+  default     = "Allow-SSH"
+}
+
+variable "web_rule_name" {
+  description = "Name of the paperless web"
+  type        = string
+  default     = "Allow-Paperless-Web"
+}
+
+variable "paperless_port" {
+  description = "Port Paperless-ngx"
+  type        = string
+  default     = "8000"
+}
+
+
+#vm
+variable "admin_password" {
+  description = "Admin password for the VM"
+  type        = string
+  sensitive   = true
+}
