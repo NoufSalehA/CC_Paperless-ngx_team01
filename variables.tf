@@ -7,7 +7,7 @@ variable "resource_group_name" {
 variable "location" {
   description = "Location of resource"
   type        = string
-  default     = "East US"
+  default     = "eastus"
 }
 
 variable "environment" {
@@ -19,7 +19,7 @@ variable "environment" {
 variable "vm_name" {
   description = "virtual machine name"
   type        = string
-  default     = "paperless_vm"
+  default     = "paperless-vm"
 }
 
 variable "vm_size" {
