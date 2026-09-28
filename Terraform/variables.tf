@@ -50,3 +50,7 @@ variable "os_disk_size_gb" {
   type        = number
   default     = 64
 }
+variable "subscription_id" {
+  description = "Azure Subscription ID"
+  type        = string
+}
