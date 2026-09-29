@@ -15,7 +15,7 @@ resource "azurerm_network_security_rule"  "paperless_nsg"{
   source_port_range           = "*"
   destination_port_range      = "22"
 
-  source_address_prefix       = "*"
+  source_address_prefix       = var.allowed_web_cidrs
   destination_address_prefix  = "*"
 
   resource_group_name         = azurerm_resource_group.rg.name
@@ -34,7 +34,7 @@ resource "azurerm_network_security_rule" "paperless_web" {
   source_port_range           = "*"
   destination_port_range      = var.paperless_port
 
-  source_address_prefix       = "*"
+  source_address_prefix       = var.allowed_web_cidrs
   destination_address_prefix  = "*"
 
   resource_group_name         = azurerm_resource_group.rg.name
