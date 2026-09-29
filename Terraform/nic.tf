@@ -1,4 +1,4 @@
-resource "azurerm_public_ip" "Paperless-ip" {
+resource "azurerm_public_ip" "Paperless_ip" {
   name                = "acceptanceTestPublicIp1"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
