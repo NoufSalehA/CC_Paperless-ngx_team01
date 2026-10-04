@@ -7,7 +7,7 @@ variable "resource_group_name" {
 variable "location" {
   description = "Location of resource"
   type        = string
-  default     = "eastus"
+  default     = "swedencentral"
 }
 
 variable "environment" {
@@ -25,7 +25,7 @@ variable "vm_name" {
 variable "vm_size" {
   description = "Virtual machine size"
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_D2s_v6"
 }
 
 variable "admin_username" {
