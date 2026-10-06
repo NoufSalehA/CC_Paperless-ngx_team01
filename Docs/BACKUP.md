@@ -2,21 +2,19 @@
 
 ## 1. Overview
 
-This document describes how to back up and restore the Paperless-ngx platform.
+This document explains how to back up and restore documents in the Paperless-ngx .
 
 | Item | Value |
 |---|---|
-| Tool | `document_exporter` (the official Paperless-ngx tool) |
+| Tool | `document_exporter` / `document_importer`  (Official Paperless-ngx tools) |
 | What is saved | Original documents + their data (tags, document types, correspondents, users, settings) |
 | Backup format | One zip file per day: `backup_YYYY-MM-DD.zip` |
 | Storage location | `~/paperless/backups/` on the VM |
-| Schedule | Daily at 02:00 UTC (05:00 Saudi time) via cron |
+| Schedule | 5 minutes after every VM boot, and daily at 12:30 UTC (15:30 Saudi time) if the VM is running |
 | Retention | 7 days (older backups are deleted automatically) |
-
 ---
 
-## 2. Backup Setup (one time only)
-
+## 2. Backup 
 ### 2.1 Create the script
 
 ```bash
@@ -24,19 +22,26 @@ cd ~/paperless
 nano backup.sh
 ```
 
-Paste the following content (file: `scripts/backup.sh`):
+Paste the following content ( file: `backup.sh`):
 
 ```bash
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 cd "$(dirname "$0")"
-mkdir -p backups
+mkdir -p backups export
+
+# Start from a clean export folder
+rm -rf export/*
 
 # Export all documents + metadata into a single zip file
 docker compose exec -T webserver document_exporter ../export -z --no-progress-bar
 
 # Move the file to the backups folder with the date in its name
-mv export/export-*.zip backups/backup_$(date +%F).zip
+FILE="backups/backup_$(date +%F).zip"
+mv export/export-*.zip "$FILE"
+
+# Verify the zip is not corrupted
+unzip -tq "$FILE"
 
 # Delete backups older than 7 days
 find backups -name "*.zip" -mtime +7 -delete
@@ -53,90 +58,144 @@ chmod +x backup.sh
 
 ```bash
 ./backup.sh
-ls backups
+ls -lh backups
 ```
 
-A file named `backup_YYYY-MM-DD.zip` should appear.
+Expected: `No errors detected in compressed data` and `Backup done`.
+
 
 ---
-
-## 3. Verification and Scheduling
-
-### 3.1 Install prerequisites
-
-```bash
-sudo apt install -y unzip
-```
-
-### 3.2 Verify the backup
-
-```bash
-unzip -l backups/backup_$(date +%F).zip | head
-```
-
-You should see `manifest.json` and the documents folder.
-
-### 3.3 Schedule the daily backup
-
+### 2.2 Schedule it with cron
+The VM is not running 24/7 (it is stopped to save cost), so a fixed night-time job would
+never run. The backup is scheduled at boot and at a daily time during working hours.
+ 
 ```bash
 crontab -e
 ```
 
-Add this line at the end of the file:
 
+Add these two lines:
+ 
 ```
-0 2 * * * /home/azureuser/paperless/backup.sh >> /home/azureuser/paperless/backup.log 2>&1
+@reboot sleep 300 && flock -n /tmp/paperless-backup.lock /home/azureuser/paperless/backup.sh >> /home/azureuser/paperless/backup.log 2>&1
+30 12 * * * flock -n /tmp/paperless-backup.lock /home/azureuser/paperless/backup.sh >> /home/azureuser/paperless/backup.log 2>&1
+```
+ 
+- `@reboot` + `sleep 300`: waits 5 minutes so the containers are up.
+- `30 12 * * *`: daily at 12:30 UTC (15:30 Saudi time, UTC+3).
+- `flock`: prevents two backups from running at the same time.
+- Output and errors are written to `backup.log`.
+
+Check:
+ 
+```bash
+crontab -l | tail -3
+tail -5 ~/paperless/backup.log
 ```
 
-> The VM runs on UTC time, so 02:00 means 05:00 Saudi time.
+### 2.3 Stopping the VM
+ 
+Take a backup right before stopping the VM, then deallocate it (a normal shutdown still
+bills compute; only **Stopped (deallocated)** stops compute billing).
 
 ---
 
-## 4. Restore Procedure
+## 3. Restore 
 
-Run this when data is lost, or to test the backups.
+### 3.1 Create the script
 
 ```bash
 cd ~/paperless
+nano restore.sh
+```
+```bash
+#!/usr/bin/env bash
 
-# 1) Clean the export folder
+#1-Check Errors
+set -euo pipefail
+
+#2-Moving to the folder ,where the script lives
+cd "$(dirname "$0")"
+
+#3.1-Reading Backup file name
+BACKUP="${1:-}"
+
+#3.2-If the file has any issue, list available backups and stop.
+if [ -z "$BACKUP" ] || [ ! -f "backups/$BACKUP" ]; then
+  echo "Usage: ./restore.sh <backup_file.zip>"
+  echo "Available backups:"; ls backups/
+  exit 1
+fi
+
+#4-Make sure The webserver container is running
+if ! docker compose ps --status running --services | grep -qx webserver; then
+  echo "ERROR: webserver is not running. Run: docker compose up -d"
+  exit 1
+fi
+
+#5-Confirm before overwriting data
+read -r -p "Restore from $BACKUP? Existing data may be overwritten. (yes/no) " ANSWER
+[ "$ANSWER" = "yes" ] || { echo "Cancelled."; exit 0; }
+
+#6-Checks the ZIP backup for errors
+unzip -tq "backups/$BACKUP"
+
+#7-Empty export folder
 rm -rf export/*
 
-# 2) Unzip the desired backup (change the date)
-unzip backups/backup_2026-10-04.zip -d export/
+#8-Extract the backup files into export folder
+unzip -q "backups/$BACKUP" -d export/
 
-# 3) Import into Paperless
-docker compose exec -T webserver document_importer ../export
+#9-Imports documents from export into Paperless
+docker compose exec -T webserver document_importer ../export --no-progress-bar
+
+#10-Print restore is done
+echo "Restore done: $(date)"
+```
+```bash
+chmod +x restore.sh
 ```
 
-Then open the Paperless web interface and confirm that the documents and tags are back.
+Running `./restore.sh` without an argument only prints usage and the list of backups.
 
-### If the import is refused because the system is not empty
+### 3.2 Restore documents
 
-`document_importer` is designed to restore onto a fresh, empty system. If you get an error to that effect:
+1. Check the Trash first (Paperless-ngx interface). Documents deleted recently can be restored there.
+
+2. If the documents were deleted permanently, choose a backup made **before** the deletion:
 
 ```bash
-docker compose down -v      # deletes current Paperless data (backups in backups/ stay safe)
-docker compose up -d
-sleep 60                    # wait for the service to be ready
-docker compose exec -T webserver document_importer ../export
-```
+cd paperless
+ls -lh backups
+cp backups/backup_<date>.zip ~/safe_backup_<date>.zip   # keep a safe copy
+./restore.sh backup_<date>.zip
+ ```
 
----
+ 3. Type `yes` and wait for `Restore done`.
 
-## 5. Monitoring and Maintenance
 
-| Check | Command |
+ > Do not run `backup.sh` before the restore is finished: a new backup made after the
+> deletion has the same file name for the same day and overwrites the good backup.
+ 
+
+### 3.3 Verify
+ 
+1. Open Paperless-ngx interface (`http://<VM-IP>:8000`) and refresh the page.
+2. Search for a restored document.
+3. Open it and check the file, tags and metadata. 
+
+
+## 4. Troubleshooting
+| Problem | What to check |
 |---|---|
-| List existing backups | `ls -lh ~/paperless/backups` |
-| Scheduled run log | `cat ~/paperless/backup.log` |
-| Cron service status | `systemctl status cron` |
+| No backup after a boot | `tail ~/paperless/backup.log`, `systemctl is-active cron`, `docker compose ps` |
+| `mv: cannot stat export/export-*.zip` | The export failed; check `docker compose logs webserver` |
+| Backup file much smaller than before | Documents were deleted before the backup; restore from an older zip |
+| `Permission denied` on `export/` | Run the commands with `sudo`, or check the owner of `export/` |
+| Import fails with a version error | Use the same Paperless-ngx version as the backup |
+| `unzip` test fails | The backup is corrupted; use an older backup |
 
-A new backup should appear every day, and the log should contain `Backup done`.
-
----
-
-## 6. Test Result
+## 5. Test Result
 
 The restore was tested end to end: a document was deleted from the web interface, then restored from the backup, and it returned with its original data.
 
