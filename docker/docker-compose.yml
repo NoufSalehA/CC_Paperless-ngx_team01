@@ -1,0 +1,48 @@
+# ==================================================================================
+# Paperless-ngx stack: broker (Valkey) + database (PostgreSQL) + webserver.
+# Usage:  docker compose pull && docker compose up -d
+# Config: docker-compose.env (app settings) and .Replace change_me values before use.
+#====================================================================================
+services:
+  # Message broker for background tasks (OCR, indexing)
+  broker:
+    image: docker.io/valkey/valkey:9-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+
+  # Database
+  db:
+    image: docker.io/library/postgres:18
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: change_me
+
+  # Paperless-ngx application (web UI on port 8000)
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+      - broker
+    ports:
+      - "8000:8000"
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - ./export:/usr/src/paperless/export      # backups / exports
+      - ./consume:/usr/src/paperless/consume    # drop files here to import
+    env_file: docker-compose.env
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBENGINE: postgresql
+volumes:
+  data:
+  media:
+  pgdata:
+  redisdata:
