@@ -23,12 +23,12 @@ Paperless-ngx gives the company one central archive for business documents. Inst
 2. On the Documents page, choose **Upload new documents** and select the file (or drag it in).
 3. A notification confirms the upload and processing begins.
 
-![Upload](.\Screenshots\upload-notification.png)
+![Upload](./Screenshots/upload-notification.png)
 
 ### Step 2 – Processing and text extraction (OCR)
 Paperless-ngx processes the file, stores it in the archive, and extracts its text. When processing finishes, the document appears in the document list. The extracted text is shown on the **Content** tab of the document.
 
-![Content tab – Operations Work Order](.\Screenshots\Content-tab.png)
+![Content tab – Operations Work Order](./Screenshots/Content-tab.png)
 *Content tab of document ID 11 showing the extracted text (work order OPS-2025-021).*
 
 > Note: the sample documents are text-based PDFs, so Paperless reads their text directly. For a scanned example, see Section 6.
@@ -36,7 +36,7 @@ Paperless-ngx processes the file, stores it in the archive, and extracts its tex
 ### Step 3 – Classification
 Open the document and set its metadata on the **Details** tab: title, date, correspondent, document type, and tags. Save the changes.
 
-![Details tab – Operations Work Order](.\Screenshots\details.png)
+![Details tab – Operations Work Order](./Screenshots/details.png)
 *Details tab of document ID 11.*
 
 Worked examples from this project:
@@ -60,27 +60,19 @@ Documents can be found by text or by metadata.
 | List documents waiting for review | Filter by tag `needs-review` | Business Review |
 | List one kind of document | Filter by document type `IT Request` | IT Change Request |
 
-![Search by text](.\Screenshots\search-text.png)
+![Search by text](./Screenshots/search-text.png)
 > Note: the search by text result
 
-![Filter by tag](.\Screenshots\filter-tag.png)
+![Filter by tag](./Screenshots/filter-tag.png)
 > Note: the filter by tag result
 
 ### Step 5 – Retrieval and review
 Open the document to preview it, or download the original file. For reviews and audits, filter by `needs-review`, open each document, and remove the tag when the review is complete.
 
-![Preview and download](.\Screenshots\retrive.png)
+![Preview and download](./Screenshots/retrive.png)
 
 
-## 4. OCR demonstration (scanned document)
-
-
-![OCR](screenshots/07-OCR.png)
-> Note: OCR result
-
-
-
-## 5. Example business scenarios
+## 4. Example business scenarios
 
 **IT change tracking.** IT uploads the change request for the corporate email platform (CHG-2025-0147). It is tagged `IT` and `Request`. Later, an auditor searches for the change ID and finds the approved request with its implementation plan.
 
