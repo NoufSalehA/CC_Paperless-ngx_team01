@@ -8,7 +8,7 @@ az vm show -d -g paperless_rg -n paperless-vm --query publicIps -o tsv
 #1.2 connect to the VM 
  ssh azureuser@20.91.226.81
 
-#1.3 update and upgrade the packages on the VM
+#1.3 update and upgrade the packages on the VM  (host patching)
  sudo apt-get update && sudo apt-get upgrade -y
 
 #1.4 install and run docker 
