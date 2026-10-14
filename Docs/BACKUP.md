@@ -185,16 +185,29 @@ cp backups/backup_<date>.zip ~/safe_backup_<date>.zip   # keep a safe copy
 3. Open it and check the file, tags and metadata. 
 
 
-## 4. Troubleshooting
-| Problem | What to check |
-|---|---|
-| No backup after a boot | `tail ~/paperless/backup.log`, `systemctl is-active cron`, `docker compose ps` |
-| `mv: cannot stat export/export-*.zip` | The export failed; check `docker compose logs webserver` |
-| Backup file much smaller than before | Documents were deleted before the backup; restore from an older zip |
-| `Permission denied` on `export/` | Run the commands with `sudo`, or check the owner of `export/` |
-| Import fails with a version error | Use the same Paperless-ngx version as the backup |
-| `unzip` test fails | The backup is corrupted; use an older backup |
+### 3.4 Restore a single file from backup
 
+ 
+```bash
+cd ~/paperless
+ 
+# 1. Search all backups for a file by part of its name
+for z in backups/*.zip; do echo "== $z"; unzip -l "$z" | grep -i "KEYWORD"; done
+ 
+# 2. List contents of one backup
+unzip -l backups/backup_2026-10-09.zip
+ 
+# 3. Extract the file
+mkdir -p /tmp/restore
+unzip -o backups/backup_2026-10-09.zip "FILE_NAME.pdf" -d /tmp/restore
+ls -l /tmp/restore
+ 
+# 4. Re-import it through the consume folder
+docker compose cp "/tmp/restore/FILE_NAME.pdf" webserver:/usr/src/paperless/consume/
+```
+ 
+Replace `KEYWORD`, the backup date, and `FILE_NAME.pdf` with your own values.
+ 
 ## 5. Test Result
 
 The restore was tested end to end: a document was deleted from the web interface, then restored from the backup, and it returned with its original data.
